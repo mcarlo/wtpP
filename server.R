@@ -1,39 +1,44 @@
 rm(list = ls())
 library(shiny); library(scales)
-load("2015wk01.RData")
+load("app2015wk01.RData")
 
 # Define a server for the Shiny app
-shinyServer(function(input, output) { # input <- data.frame(players = 100, first = 100, second = 75, third = 50)
+shinyServer(function(input, output) { # input <- data.frame(players = 100, first = 100, second = 75, third = 50, stringsAsFactors = F)
 
   poolsize <- reactive({input$players})
   #results <- calcWinners(input$players)
-  fanScoreSubset <- reactive({fanSubset[, 1:poolsize]})
+  sizeIndex <- reactive({poolsize()/5}) #poolsize/5
+  dataDF <- reactive({playersBest[[2*sizeIndex()]]}) #playersBest[[2*sizeIndex]]
   
-  comparisonFirst <- reactive({comparisonPicksScores > apply(fanScoreSubset(), 1, max)})
-  comparisonTiedorFirst <- reactive({comparisonPicksScores >= apply(fanScoreSubset(), 1, max)})
+  outright <- reactive({dataDF()$outW}) #dataDF$outW
+  outrightPicks <- reactive({dataDF()$outPicks}) #dataDF$outPicks
   
-  outright <- reactive({which(colSums(comparisonFirst()) == max(colSums(comparisonFirst())))})
-  mostwins <- reactive({which(colSums(comparisonTiedorFirst) == max(colSums(comparisonTiedorFirst)))})
+  mostwins <- reactive({dataDF()$mostW}) #dataDF$mostW
+  mostWinsPicks <- reactive({dataDF()$mostPicks}) #dataDF$mostPicks
   
   straightPicks <- reactive({
     data <- weekFile$Victor
-    data[comparisonPicks[,outright()] == 0] <- weekFile$Underdog[comparisonPicks[,outright()] == 0]
+    data[outrightPicks() == 0] <- weekFile$Underdog[outrightPicks() == 0]
+    #straightPicks <- 
     data
   }) 
 
   straightPicksSafe <- reactive({
     data <- weekFile$Victor
-    data[comparisonPicks[,mostwins()] == 0] <- weekFile$Underdog[comparisonPicks[,mostwins()] == 0]
+    data[mostWinsPicks() == 0] <- weekFile$Underdog[mostWinsPicks() == 0]
+    #straightPicksSafe <- 
     data
   })
 
   outDF <- reactive({
-    data <- data.frame(Game = weekFile$Game, pick = straightPicks())
+    data <- data.frame(Game = weekFile$Game, pick = straightPicks(), stringsAsFactors = F)
+    #outDF <- 
     data[order(weekFile$order), ]
     })
   
   outDFSafe <- reactive({
-    data <- data.frame(Game = weekFile$Game, pick = straightPicksSafe())
+    data <- data.frame(Game = weekFile$Game, pick = straightPicksSafe(), stringsAsFactors = F)
+    #outDFSafe <- 
     data[order(weekFile$order), ]
   })
 

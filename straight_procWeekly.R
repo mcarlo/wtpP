@@ -26,40 +26,59 @@ save.image("2015wk01.RData")
 ###
 load("2015wk01.RData")
 
-poolsize <- 22
-fanScoreSubset <- fanSubset[, 1:poolsize]
+# suppressMessages(library(foreach))
+# suppressMessages(suppressWarnings(library(data.table)))
+poolsize <- seq(5, 50, by = 5)
+outright <- rep(1, 10)
+mostwins <- rep(1, 10)
 
-comparisonFirst <- comparisonPicksScores > apply(fanScoreSubset, 1, max)
-comparisonTiedorFirst <- comparisonPicksScores >= apply(fanScoreSubset, 1, max)
+calcTactics <- function(size){#size=20
+  fanScoreSubset <- fanSubset[, 1:size]
+  
+  comparisonFirst <- comparisonPicksScores > apply(fanScoreSubset, 1, max)
+  comparisonTiedorFirst <- comparisonPicksScores >= apply(fanScoreSubset, 1, max)
+  
+  fansFirst <- 1 * (fanScoreSubset == apply(fanScoreSubset, 1, max))
+  fansTiedorFirstCount <- rowSums(fansFirst)
+  fansTiedorFirstAvg <- mean(fansTiedorFirstCount)/size*17
+  fansFirstCount <- rep(0, 1700)
+  fansFirstCount[fansTiedorFirstCount == 1] <- 1
+  fansFirstAvg <- mean(fansFirstCount)/size*17
+  
+  outright <- which(colSums(comparisonFirst) == max(colSums(comparisonFirst)))
+  lenOut <- length(outright)
+  mostwins <- which(colSums(comparisonTiedorFirst/fansTiedorFirstCount) == max(colSums(comparisonTiedorFirst/fansTiedorFirstCount)))
+  lenMost <- length(mostwins)
+  
+  data <- list(outright, mostwins, numOutright = lenOut, numWins = lenMost, outPicks = comparisonPicks[, outright], mostPicks = comparisonPicks[, mostwins], outW = colSums(comparisonFirst)[outright]/100, mostW = colSums(comparisonTiedorFirst)[mostwins]/100, avgOut = fansFirstAvg, avgMost = fansTiedorFirstAvg)
+  data
+}
+# library(compiler)
+# cmpCalcTac <- cmpfun(calcTactics)
+popList <- function(size){list(size, calcTactics(size))}
 
-outright <- which(colSums(comparisonFirst) == max(colSums(comparisonFirst)))
-mostwins <- which(colSums(comparisonTiedorFirst) == max(colSums(comparisonTiedorFirst)))
+system.time(firstList <- popList(5))
+playersBest <- rep(firstList, 50)
 
-# comparisonPicks[, outright]
-# comparisonPicks[, mostwins]
+# suppressMessages(suppressWarnings(library(data.table)))
 
-colSums(comparisonFirst)[outright] +
-  0.5 * (colSums(comparisonTiedorFirst)[outright] -
-           colSums(comparisonFirst)[outright])
-colSums(comparisonFirst)[mostwins] +
-  0.5 * (colSums(comparisonTiedorFirst)[mostwins] -
-           colSums(comparisonFirst)[mostwins])
-sum(comparisonPicks[, mostwins] * winprob)
-sum(comparisonPicks[, outright] * winprob)
+fanSizes <- seq(5, 100, by = 5)
 
-colSums(comparisonTiedorFirst)[mostwins]
-colSums(comparisonTiedorFirst)[outright]
+compTactics <- function(){
+  for(i in 2:20)  {#i = 2
+    
+    size <- fanSizes[i]
+    genList <- popList(size)
+    playersBest[[2*(i - 1) + 1]] <<- genList[[1]]
+    playersBest[[2*i]] <<- genList[[2]]
+    
+  }
+}
 
-colSums(comparisonFirst)[outright]
-colSums(comparisonFirst)[mostwins]
+system.time(compTactics())
 
-comparisonPicks[,outright]
-comparisonPicks[,mostwins]
+weekFile
+weekFileOrig
 
-pick <- comparisonPicks[,mostwins]
-straightPicks <- weekFile$Victor
-straightPicks[pick == 0] <- weekFile$Underdog[pick == 0]
-
-outDF <- data.frame(Game = weekFile$Game, pick = straightPicks)
-outDF[order(weekFile$order), ]
+save(weekFile, weekFileOrig, playersBest, file = "app2015wk01.RData")
 

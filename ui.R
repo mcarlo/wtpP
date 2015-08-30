@@ -13,8 +13,8 @@ shinyUI(fluidPage(
        column(1, p("")),
        column(5,
               p("Number of Players in Pool:")),
-       column(6, numericInput("players", label = NA, min = 10,
-                              max = 250, step = 10, value = 100)
+       column(6, numericInput("players", label = NA, min = 5,
+                              max = 20, step = 5, value = 100)
               )
        
         )
